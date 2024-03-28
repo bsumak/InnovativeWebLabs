@@ -1,6 +1,6 @@
 <img src="WebExperiments.png"/>
 
-# WebInnovativeLabs
+# Innovative Web Solutions
 Experimenting with modern web technologies for innovative web solutions 
 
 ## Directory

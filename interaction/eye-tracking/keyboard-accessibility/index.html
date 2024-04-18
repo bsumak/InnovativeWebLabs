@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Eye tracking keyboard</title>
+    <link rel="stylesheet" href="./index.css">
+    <script src="lib/artyom.window.min.js"></script>
+    <script src="index.js"></script>
+</head>
+<body>
+<div class="container">
+    <div class="written-prompt" id="written-prompt"></div>
+
+    <div class="keyboard-container">
+        <div class="keyboard">
+            <div class="row">
+                <button id="back-tick" class="key" onclick="onKeyClicked('`')"><span class="front">`</span></button>
+                <button id="1" class="key" onclick="onKeyClicked('1')"><span class="front">1</span></button>
+                <button id="2" class="key" onclick="onKeyClicked('2')"><span class="front">2</span></button>
+                <button id="3" class="key" onclick="onKeyClicked('3')"><span class="front">3</span></button>
+                <button id="4" class="key" onclick="onKeyClicked('4')"><span class="front">4</span></button>
+                <button id="5" class="key" onclick="onKeyClicked('5')"><span class="front">5</span></button>
+                <button id="6" class="key" onclick="onKeyClicked('6')"><span class="front">6</span></button>
+                <button id="7" class="key" onclick="onKeyClicked('7')"><span class="front">7</span></button>
+                <button id="8" class="key" onclick="onKeyClicked('8')"><span class="front">8</span></button>
+                <button id="9" class="key" onclick="onKeyClicked('9')"><span class="front">9</span></button>
+                <button id="0" class="key" onclick="onKeyClicked('10')"><span class="front">0</span></button>
+                <button id="-" class="key" onclick="onKeyClicked('-')"><span class="front">-</span></button>
+                <button id="=" class="key" onclick="onKeyClicked('=')"><span class="front">=</span></button>
+                <button id="DEL" class="key" onclick="onKeyClicked('DEL')"><span class="front">DEL</span></button>
+            </div>
+            <div class="row">
+                <button id="TAB" class="key" onclick="onKeyClicked('TAB')"><span class="front">TAB</span></button>
+                <button id="q" class="key" onclick="onKeyClicked('q')"><span class="front">q</span></button>
+                <button id="w" class="key" onclick="onKeyClicked('w')"><span class="front">w</span></button>
+                <button id="e" class="key" onclick="onKeyClicked('e')"><span class="front">e</span></button>
+                <button id="r" class="key" onclick="onKeyClicked('r')"><span class="front">r</span></button>
+                <button id="t" class="key" onclick="onKeyClicked('t')"><span class="front">t</span></button>
+                <button id="y" class="key" onclick="onKeyClicked('y')"><span class="front">y</span></button>
+                <button id="u" class="key" onclick="onKeyClicked('u')"><span class="front">u</span></button>
+                <button id="o" class="key" onclick="onKeyClicked('o')"><span class="front">o</span></button>
+                <button id="p" class="key" onclick="onKeyClicked('p')"><span class="front">p</span></button>
+                <button id="[" class="key" onclick="onKeyClicked('[')"><span class="front">[</span></button>
+                <button id="]" class="key" onclick="onKeyClicked(']')"><span class="front">]</span></button>
+                <button id="back-slash" class="key" onclick="onKeyClicked('\\')"><span class="front">\</span></button>
+            </div>
+            <div class="row">
+                <button id="CAPS" class="key" onclick="onKeyClicked('CAPS')"><span class="front">CAPS</span></button>
+                <button id="a" class="key" onclick="onKeyClicked('a')"><span class="front">a</span></button>
+                <button id="s" class="key" onclick="onKeyClicked('s')"><span class="front">s</span></button>
+                <button id="d" class="key" onclick="onKeyClicked('d')"><span class="front">d</span></button>
+                <button id="f" class="key" onclick="onKeyClicked('f')"><span class="front">f</span></button>
+                <button id="g" class="key" onclick="onKeyClicked('g')"><span class="front">g</span></button>
+                <button id="h" class="key" onclick="onKeyClicked('h')"><span class="front">h</span></button>
+                <button id="j" class="key" onclick="onKeyClicked('j')"><span class="front">j</span></button>
+                <button id="k" class="key" onclick="onKeyClicked('k')"><span class="front">k</span></button>
+                <button id="l" class="key" onclick="onKeyClicked('l')"><span class="front">l</span></button>
+                <button id="semi-colon" class="key" onclick="onKeyClicked(';')"><span class="front">;</span></button>
+                <button id="apostrophe" class="key" onclick="onKeyClicked('\'')"><span class="front">'</span></button>
+                <button id="enter" class="key" onclick="onKeyClicked('Enter')"><span class="front">Enter</span></button>
+            </div>
+            <div class="row">
+                <button id="SHIFT" class="key" onclick="onKeyClicked('shift')"><span class="front">SHIFT</span></button>
+                <button id="z" class="key" onclick="onKeyClicked('z')"><span class="front">z</span></button>
+                <button id="x" class="key" onclick="onKeyClicked('x')"><span class="front">x</span></button>
+                <button id="c" class="key" onclick="onKeyClicked('c')"><span class="front">c</span></button>
+                <button id="v" class="key" onclick="onKeyClicked('v')"><span class="front">v</span></button>
+                <button id="b" class="key" onclick="onKeyClicked('b')"><span class="front">b</span></button>
+                <button id="n" class="key" onclick="onKeyClicked('n')"><span class="front">n</span></button>
+                <button id="m" class="key" onclick="onKeyClicked('m')"><span class="front">m</span></button>
+                <button id="comma" class="key" onclick="onKeyClicked(',')"><span class="front">,</span></button>
+                <button id="dot" class="key" onclick="onKeyClicked('.')"><span class="front">.</span></button>
+                <button id="forward-slash" class="key" onclick="onKeyClicked('/')"><span class="front">/</span></button>
+                <button id="CTRL" class="key" onclick="onKeyClicked('CTRL')"><span class="front">CTRL</span></button>
+            </div>
+            <div class="row" id="space-row">
+                <button id="space" class="key" onclick="onKeyClicked('SPACE')"><span class="front">SPACE</span></button>
+            </div>
+        </div>
+    </div>
+</div>
+</body>
+</html>

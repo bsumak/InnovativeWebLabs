@@ -13,11 +13,10 @@
 </head>
 <body>
 <div class="container">
-
+    <div class="written-prompt" id="written-prompt"></div>
     <div class="keyboard-container">
         <div class="keyboard">
             <div class="row">
-                <button id="back-tick" class="key" onclick="onKeyClicked('`')"><span class="front">`</span></button>
                 <button id="1" class="key" onclick="onKeyClicked('1')"><span class="front">1</span></button>
                 <button id="2" class="key" onclick="onKeyClicked('2')"><span class="front">2</span></button>
                 <button id="3" class="key" onclick="onKeyClicked('3')"><span class="front">3</span></button>
@@ -33,7 +32,6 @@
                 <button id="DEL" class="key" onclick="onKeyClicked('DEL')"><span class="front">DEL</span></button>
             </div>
             <div class="row">
-                <button id="TAB" class="key" onclick="onKeyClicked('TAB')"><span class="front">TAB</span></button>
                 <button id="q" class="key" onclick="onKeyClicked('q')"><span class="front">q</span></button>
                 <button id="w" class="key" onclick="onKeyClicked('w')"><span class="front">w</span></button>
                 <button id="e" class="key" onclick="onKeyClicked('e')"><span class="front">e</span></button>
@@ -49,7 +47,6 @@
                 <button id="back-slash" class="key" onclick="onKeyClicked('\\')"><span class="front">\</span></button>
             </div>
             <div class="row">
-                <button id="CAPS" class="key" onclick="onKeyClicked('CAPS')"><span class="front">CAPS</span></button>
                 <button id="a" class="key" onclick="onKeyClicked('a')"><span class="front">a</span></button>
                 <button id="s" class="key" onclick="onKeyClicked('s')"><span class="front">s</span></button>
                 <button id="d" class="key" onclick="onKeyClicked('d')"><span class="front">d</span></button>
@@ -64,7 +61,7 @@
                 <button id="enter" class="key" onclick="onKeyClicked('Enter')"><span class="front">Enter</span></button>
             </div>
             <div class="row">
-                <button id="SHIFT" class="key" onclick="onKeyClicked('shift')"><span class="front">SHIFT</span></button>
+                <button id="back-tick" class="key" onclick="onKeyClicked('`')"><span class="front">`</span></button>
                 <button id="z" class="key" onclick="onKeyClicked('z')"><span class="front">z</span></button>
                 <button id="x" class="key" onclick="onKeyClicked('x')"><span class="front">x</span></button>
                 <button id="c" class="key" onclick="onKeyClicked('c')"><span class="front">c</span></button>
@@ -75,14 +72,13 @@
                 <button id="comma" class="key" onclick="onKeyClicked(',')"><span class="front">,</span></button>
                 <button id="dot" class="key" onclick="onKeyClicked('.')"><span class="front">.</span></button>
                 <button id="forward-slash" class="key" onclick="onKeyClicked('/')"><span class="front">/</span></button>
-                <button id="CTRL" class="key" onclick="onKeyClicked('CTRL')"><span class="front">CTRL</span></button>
+                <button id="+" class="key" onclick="onKeyClicked('+')"><span class="front">+</span></button>
             </div>
             <div class="row" id="space-row">
                 <button id="space" class="key" onclick="onKeyClicked('SPACE')"><span class="front">SPACE</span></button>
             </div>
         </div>
     </div>
-    <div class="written-prompt" id="written-prompt"></div>
 </div>
 </body>
 </html>

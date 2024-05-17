@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Prilagajanje Velikosti Besedila</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+  <input type="file" id="file-input">
+  <div id="text-container"></div>
+  <div id="video-container">
+    <video id="video" width="100%" height="auto" autoplay playsinline></video>
+  </div>
+  <div id="font-size-display">Velikost pisave: <span id="font-size-value">12</span> px</div>
+
+  <!-- Background audio -->
+  <audio id="background-audio" src="background-audio.mp3" preload="auto" loop volume="0.15"></audio>
+  
+  <!-- Beep audio -->
+  <audio id="beep-audio" src="beep.mp3" preload="auto"></audio>
+
+  <!-- GIF overlay -->
+  <div id="gif-overlay">
+    <img src="look-jim-carrey.gif" alt="Loading...">
+  </div>
+
+  <!-- Vključitev TensorFlow.js -->
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
+
+  <!-- Vključitev modela BlazeFace -->
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/blazeface"></script>
+
+  <script>
+    let baseFontSize = 12; // Privzeta velikost pisave
+    let lastFaceDetectionTime = 0; // Čas zadnje zaznave obraza
+
+    document.getElementById('file-input').addEventListener('change', function(event) {
+      // Dogodek, ki se sproži ob spremembi datoteke v vhodnem polju
+      const file = event.target.files[0];
+      const reader = new FileReader();
+
+      reader.onload = function(event) {
+        // Ko se datoteka prebere, se prikaže njen vsebina v kontejnerju za besedilo
+        const text = event.target.result;
+        document.getElementById('text-container').textContent = text;
+      }
+
+      reader.readAsText(file); // Preberi datoteko kot besedilo
+    });
+
+    document.addEventListener('DOMContentLoaded', async function() {
+      // Ko se stran naloži, se zažene ta funkcija
+      const textContainer = document.getElementById('text-container');
+      const fontSizeDisplay = document.getElementById('font-size-value');
+      const video = document.getElementById('video');
+      const backgroundAudio = document.getElementById('background-audio');
+      const beepAudio = document.getElementById('beep-audio');
+      const gifOverlay = document.getElementById('gif-overlay');
+
+      async function updateTextSize(faceWidth) {
+        // Funkcija za posodabljanje velikosti besedila glede na širino obraza
+        const minFontSize = 10; // Minimalna velikost pisave
+        const maxFontSize = 50; // Maksimalna velikost pisave
+        const scaleFactor = 0.1; // Faktor prilagajanja velikosti
+        let newSize = maxFontSize - (scaleFactor * faceWidth);
+        // Omeji velikost pisave na minimalno in maksimalno vrednost
+        newSize = Math.max(minFontSize, Math.min(newSize, maxFontSize));
+        textContainer.style.fontSize = newSize + 'px';
+        fontSizeDisplay.textContent = Math.round(newSize);
+      }
+
+      async function startCamera() {
+        // Funkcija za zagon kamere in zaznavanje obraza
+        const model = await blazeface.load(); // Naloži model BlazeFace
+
+        navigator.mediaDevices.getUserMedia({ video: true })
+          .then(function(stream) {
+            // Pridobivanje dostopa do kamere
+            video.srcObject = stream; // Nastavi video tok
+            video.play(); // Zažene video predvajanje
+
+            // Spremljanje video toka in izvajanje zaznavanja obraza
+            setInterval(async function() {
+              const predictions = await model.estimateFaces(video);
+              if (predictions.length > 0) {
+                // Če je obraza zaznan, posodobi velikost besedila
+                const face = predictions[0];
+                const faceWidth = face.bottomRight[0] - face.topLeft[0];
+                await updateTextSize(faceWidth);
+                textContainer.style.display = "block"; // Prikaže besedilo, če je obraza zaznan
+                // Če ozadja ni v predvajanju, ga zaženi
+                if (backgroundAudio.paused) {
+                  backgroundAudio.play();
+                }
+                // Prikaže GIF prekrivno plast, če obraza ni bilo mogoče zaznati 2 sekundi
+                const currentTime = new Date().getTime();
+                if (currentTime - lastFaceDetectionTime > 2000) {
+                  gifOverlay.style.display = "block";
+                  setTimeout(() => {
+                    gifOverlay.style.display = "none";
+                  }, 3000);
+                }
+                // Skrije beep zvok
+                if (!beepAudio.paused) {
+                  beepAudio.pause();
+                  beepAudio.currentTime = 0;
+                }
+                lastFaceDetectionTime = currentTime;
+              } else {
+                // Če obraza ni bilo mogoče najti, ohrani privzeto velikost besedila in ga prikaži na zaslonu
+                textContainer.style.fontSize = baseFontSize + 'px';
+                fontSizeDisplay.textContent = baseFontSize;
+                textContainer.style.display = "block"; // Prikaže besedilo tudi brez obraza
+                // Zaustavi predvajanje ozadja, če ni zaznanega obraza
+                if (!backgroundAudio.paused) {
+                  backgroundAudio.pause();
+                }
+                const currentTime = new Date().getTime();
+                if (currentTime - lastFaceDetectionTime > 4000) {
+                  // Predvaja beep zvok, če ni zaznanega obraza 4 sekunde
+                  if (beepAudio.paused) {
+                    beepAudio.play();
+                  }
+                }
+                if (currentTime - lastFaceDetectionTime > 12000) {
+                  // Prikaže 'bye.gif' če ni bilo zaznanega obraza 12 sekund
+                  gifOverlay.innerHTML = '<img src="bye.gif" alt="Goodbye!">';
+                  gifOverlay.style.display = "block";
+                  setTimeout(() => {
+                    window.close(); // Zapre okno brskalnika po 6 sekundah
+                  }, 6000);
+                }
+              }
+            }, 1000); // Posodabljanje vsako sekundo
+          })
+          .catch(function(err) {
+            console.error('Napaka pri zagonu kamere ali nalaganju modela: ', err);
+          });
+      }
+
+      startCamera(); // Zažene kamero, ko se stran naloži
+    });
+  </script>
+</body>
+
+</html>

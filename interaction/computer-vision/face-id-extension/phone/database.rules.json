@@ -1,0 +1,19 @@
+{
+  "rules": {
+    "sessions": {
+      "$sessionId": {
+        ".read": true,
+        ".write": true,
+        "result": {
+          ".validate": "(newData.hasChildren(['verified', 'secret', 'timestamp']) || newData.hasChildren(['enrolled', 'descriptors', 'secret', 'timestamp'])) && newData.child('secret').val() === data.parent().child('secret').val()"
+        }
+      }
+    },
+    "test": {
+      ".read": false,
+      ".write": false
+    },
+    ".read": false,
+    ".write": false
+  }
+}

@@ -1,0 +1,14 @@
+import React from "react";
+import ReactDOM from "react-dom/client";
+import App from "./App";
+import "../globals.css";
+import { initTheme } from "@/lib/theme";
+
+initTheme();
+
+// biome-ignore lint/style/noNonNullAssertion: root element always exists in index.html
+ReactDOM.createRoot(document.getElementById("root")!).render(
+	<React.StrictMode>
+		<App />
+	</React.StrictMode>,
+);

@@ -1,0 +1,1408 @@
+<!DOCTYPE html>
+<html lang="sl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Zaščita &amp; Reševanje – Intervencijski Sistem</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow+Condensed:wght@300;400;600;700;900&display=swap" rel="stylesheet">
+<style>
+:root{
+  --blue:#1565c0;--blue-lt:#1e88e5;--cyan:#00b0ff;
+  --storm:#0d1b2a;--panel:rgba(10,18,28,0.96);--card:#141e2a;
+  --border:#1e2e40;--fog:#5a7080;--white:#dce8f0;
+  --amber:#ffab00;--green:#00e676;--red:#ff1744;--warn:#ff6f00;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:var(--storm);color:var(--white);font-family:'Barlow Condensed',sans-serif;overflow:hidden;height:100vh;width:100vw;}
+#map{position:absolute;inset:0;z-index:0;filter:brightness(0.8) saturate(0.6) hue-rotate(10deg);}
+
+/* HEADER */
+#header{
+  position:absolute;top:0;left:0;right:0;z-index:100;
+  background:linear-gradient(180deg,rgba(8,14,22,0.98) 60%,transparent);
+  padding:12px 22px 28px;display:flex;align-items:center;gap:16px;pointer-events:none;
+}
+.emblem{width:42px;height:42px;flex-shrink:0;background:var(--blue-lt);
+  clip-path:polygon(50% 0%,100% 25%,100% 75%,50% 100%,0% 75%,0% 25%);
+  display:flex;align-items:center;justify-content:center;font-size:20px;
+  animation:epulse 3s ease-in-out infinite;}
+@keyframes epulse{0%,100%{box-shadow:0 0 8px var(--blue-lt)}50%{box-shadow:0 0 22px var(--cyan)}}
+.header-text .sup{font-family:'Share Tech Mono';font-size:10px;color:var(--fog);letter-spacing:3px;text-transform:uppercase;}
+.header-text .main{font-size:24px;font-weight:900;letter-spacing:2px;color:var(--white);line-height:1;}
+#clock{margin-left:auto;font-family:'Share Tech Mono';font-size:22px;color:var(--cyan);letter-spacing:2px;pointer-events:all;}
+#int-header-count{font-family:'Share Tech Mono';font-size:10px;color:var(--fog);pointer-events:all;margin-top:2px;text-align:right;}
+
+/* SIDEBAR */
+#sidebar{
+  position:absolute;right:0;top:0;bottom:0;width:340px;z-index:100;
+  background:linear-gradient(90deg,transparent 0%,var(--panel) 15%);
+  padding:72px 18px 18px 36px;display:flex;flex-direction:column;gap:12px;overflow-y:auto;
+}
+#sidebar::-webkit-scrollbar{width:3px;}
+#sidebar::-webkit-scrollbar-thumb{background:var(--blue);border-radius:2px;}
+.section-label{font-family:'Share Tech Mono';font-size:10px;color:var(--fog);letter-spacing:3px;text-transform:uppercase;}
+.divider{border:none;border-top:1px solid var(--border);margin:2px 0;}
+
+/* VUI */
+#vui-btn{
+  display:flex;align-items:center;gap:10px;background:var(--blue);border:none;color:white;
+  font-family:'Barlow Condensed';font-size:17px;font-weight:700;letter-spacing:2px;
+  padding:11px 16px;cursor:pointer;width:100%;text-transform:uppercase;
+  clip-path:polygon(0 0,calc(100% - 10px) 0,100% 10px,100% 100%,0 100%);transition:all 0.2s;
+}
+#vui-btn:hover:not(:disabled){background:var(--blue-lt);transform:translateX(-2px);}
+#vui-btn:disabled{opacity:0.5;cursor:not-allowed;}
+#vui-btn.recording{background:var(--red);animation:rpulse 0.9s ease-in-out infinite;}
+@keyframes rpulse{0%,100%{box-shadow:0 0 0 0 rgba(255,23,68,0.5)}50%{box-shadow:0 0 0 10px rgba(255,23,68,0)}}
+#voice-wave{display:none;align-items:center;justify-content:center;gap:3px;height:24px;}
+#voice-wave.active{display:flex;}
+.wave-bar{width:3px;background:var(--cyan);border-radius:2px;height:4px;animation:wv 0.8s ease-in-out infinite;}
+.wave-bar:nth-child(1){animation-delay:0s}.wave-bar:nth-child(2){animation-delay:.1s}
+.wave-bar:nth-child(3){animation-delay:.2s}.wave-bar:nth-child(4){animation-delay:.3s}
+.wave-bar:nth-child(5){animation-delay:.2s}.wave-bar:nth-child(6){animation-delay:.1s}
+.wave-bar:nth-child(7){animation-delay:0s}
+@keyframes wv{0%,100%{height:4px}50%{height:20px}}
+#vui-status{
+  background:var(--card);border-left:3px solid var(--blue);padding:9px 12px;
+  font-family:'Share Tech Mono';font-size:11px;color:var(--cyan);
+  line-height:1.6;min-height:52px;letter-spacing:0.5px;white-space:pre-line;
+}
+
+/* FORM */
+.field-label{font-family:'Share Tech Mono';font-size:10px;color:var(--fog);letter-spacing:2px;display:block;margin-bottom:3px;}
+.field-input{width:100%;background:var(--card);border:1px solid var(--border);border-bottom:1px solid var(--blue);color:var(--white);font-family:'Barlow Condensed';font-size:15px;padding:7px 10px;outline:none;transition:border-color 0.2s;}
+.field-input:focus{border-bottom-color:var(--cyan);}
+.field-select{width:100%;background:var(--card);border:1px solid var(--border);border-bottom:1px solid var(--blue);color:var(--white);font-family:'Barlow Condensed';font-size:15px;padding:7px 10px;outline:none;cursor:pointer;}
+.field-select option{background:var(--card);}
+#add-manual-btn{background:var(--card);border:1px solid var(--blue);color:var(--cyan);font-family:'Barlow Condensed';font-size:15px;font-weight:700;letter-spacing:2px;padding:8px;cursor:pointer;text-transform:uppercase;transition:all 0.2s;width:100%;}
+#add-manual-btn:hover:not(:disabled){background:var(--blue);color:white;}
+
+/* GESTURE BTN */
+#gesture-btn{
+  display:flex;align-items:center;gap:10px;background:transparent;
+  border:1px solid var(--border);color:var(--fog);
+  font-family:'Barlow Condensed';font-size:16px;font-weight:600;
+  letter-spacing:2px;padding:9px 16px;cursor:pointer;transition:all 0.2s;width:100%;text-transform:uppercase;
+}
+#gesture-btn:hover{border-color:var(--cyan);color:var(--cyan);}
+#gesture-btn.active{border-color:var(--green);color:var(--green);}
+.status-row{display:flex;align-items:center;gap:8px;font-size:11px;color:var(--fog);font-family:'Share Tech Mono';}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--border);flex-shrink:0;}
+.dot.ok{background:var(--green);box-shadow:0 0 6px var(--green);animation:blink 1.5s infinite;}
+.dot.warn{background:var(--amber);box-shadow:0 0 6px var(--amber);}
+.dot.err{background:var(--red);}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0.3}}
+
+/* GESTURE LEGEND */
+#gesture-legend{background:var(--card);border:1px solid var(--border);padding:8px 10px;display:none;flex-direction:column;gap:6px;}
+#gesture-legend.show{display:flex;}
+.gl-row{display:flex;align-items:flex-start;gap:8px;}
+.gl-icon{font-size:18px;width:26px;text-align:center;flex-shrink:0;line-height:1.3;}
+.gl-txt{font-family:'Share Tech Mono';font-size:10px;color:var(--fog);line-height:1.5;}
+.gl-txt.active{color:var(--cyan);}
+
+/* GESTURE STATUS HUD */
+#gesture-hud{
+  position:absolute;top:62px;left:50%;transform:translateX(-50%);
+  z-index:110;font-family:'Share Tech Mono';font-size:12px;color:var(--cyan);
+  background:rgba(10,18,28,0.88);padding:5px 18px;letter-spacing:1px;
+  pointer-events:none;opacity:0;transition:opacity 0.3s;white-space:nowrap;
+  border:1px solid var(--border);
+}
+#gesture-hud.show{opacity:1;}
+
+/* INTERVENTION LIST */
+#intervention-list{display:flex;flex-direction:column;gap:7px;flex:1;}
+.int-card{background:var(--card);border-left:3px solid var(--border);padding:9px 12px;cursor:pointer;transition:all 0.2s;}
+.int-card:hover{background:var(--border);transform:translateX(-3px);}
+.int-card.type-poplava{border-left-color:#1e88e5;}
+.int-card.type-neurje{border-left-color:#7c4dff;}
+.int-card.type-plaz{border-left-color:#795548;}
+.int-card.type-potres{border-left-color:#ff6f00;}
+.int-card.type-onesnazenje{border-left-color:#43a047;}
+.int-card.type-ostalo{border-left-color:var(--fog);}
+.int-badge{font-family:'Share Tech Mono';font-size:9px;letter-spacing:2px;text-transform:uppercase;margin-bottom:3px;}
+.type-poplava .int-badge{color:#1e88e5;}.type-neurje .int-badge{color:#9c6fff;}
+.type-plaz .int-badge{color:#a1887f;}.type-potres .int-badge{color:var(--warn);}
+.type-onesnazenje .int-badge{color:#66bb6a;}.type-ostalo .int-badge{color:var(--fog);}
+.int-desc{font-size:14px;font-weight:600;color:var(--white);line-height:1.2;margin-bottom:3px;}
+.int-meta{font-family:'Share Tech Mono';font-size:10px;color:var(--fog);}
+
+/* POPUP */
+#popup-card{
+  position:absolute;z-index:200;display:none;
+  background:rgba(10,18,28,0.97);border:1px solid var(--blue-lt);
+  border-top:3px solid var(--cyan);padding:14px 18px;width:270px;
+  box-shadow:0 8px 32px rgba(0,0,0,0.8),0 0 20px rgba(0,176,255,0.15);
+  pointer-events:none;
+}
+.popup-type{font-family:'Share Tech Mono';font-size:9px;letter-spacing:3px;color:var(--cyan);margin-bottom:6px;}
+.popup-title{font-size:18px;font-weight:700;color:var(--white);margin-bottom:4px;line-height:1.2;}
+.popup-loc{font-family:'Share Tech Mono';font-size:10px;color:var(--fog);margin-bottom:8px;}
+.popup-desc{font-size:13px;color:#aac;line-height:1.5;border-top:1px solid var(--border);padding-top:7px;}
+.popup-time{font-family:'Share Tech Mono';font-size:10px;color:var(--amber);margin-top:8px;}
+
+/* HAND CURSORS */
+#hand-l,#hand-r{
+  position:absolute;pointer-events:none;z-index:150;
+  transform:translate(-50%,-50%);display:none;
+  width:24px;height:24px;border-radius:50%;
+  border:2px solid rgba(0,176,255,0.8);
+  transition:left 0.04s linear,top 0.04s linear;
+}
+#hand-l::after,#hand-r::after{
+  content:'';position:absolute;top:50%;left:50%;
+  width:5px;height:5px;border-radius:50%;background:var(--cyan);
+  transform:translate(-50%,-50%);
+}
+#hand-l.palm{border-color:var(--green);}#hand-l.palm::after{background:var(--green);}
+#hand-l.point{border-color:var(--amber);}#hand-l.point::after{background:var(--amber);}
+#hand-r.palm{border-color:var(--green);}#hand-r.palm::after{background:var(--green);}
+
+/* DWELL RING */
+#dwell-ring{
+  position:absolute;z-index:151;pointer-events:none;display:none;
+  border:2px solid var(--amber);border-radius:50%;transform:translate(-50%,-50%);
+}
+/* Dwell progress arc – drawn on separate canvas */
+#dwell-canvas{position:absolute;z-index:152;pointer-events:none;display:none;transform:translate(-50%,-50%);}
+
+/* ZONE FLASH */
+#zone-flash{position:absolute;inset:0;z-index:45;pointer-events:none;opacity:0;transition:opacity 0.12s;}
+#zone-flash.left{background:linear-gradient(90deg,rgba(0,176,255,0.15) 0%,transparent 30%);opacity:1;}
+#zone-flash.right{background:linear-gradient(270deg,rgba(0,176,255,0.15) 0%,transparent 30%);opacity:1;}
+#zone-flash.up{background:linear-gradient(180deg,rgba(0,176,255,0.15) 0%,transparent 30%);opacity:1;}
+#zone-flash.down{background:linear-gradient(0deg,rgba(0,176,255,0.15) 0%,transparent 30%);opacity:1;}
+#zone-flash.zin{background:radial-gradient(circle at 50% 50%,rgba(0,230,118,0.2) 0%,transparent 55%);opacity:1;}
+#zone-flash.zout{background:radial-gradient(circle at 50% 50%,rgba(255,171,0,0.2) 0%,transparent 55%);opacity:1;}
+
+/* CAMERA */
+#cam-wrap{
+  position:fixed;bottom:14px;left:50%;transform:translateX(-50%);
+  z-index:300;display:none;flex-direction:column;align-items:center;gap:4px;
+}
+#cam-wrap.show{display:flex;}
+#cam-container{position:relative;width:220px;height:165px;border:1px solid var(--border);overflow:hidden;background:#000;}
+#cam-video{width:100%;height:100%;object-fit:cover;transform:scaleX(-1);opacity:0.6;display:block;}
+#cam-canvas{position:absolute;inset:0;width:100%;height:100%;transform:scaleX(-1);}
+#cam-label{font-family:'Share Tech Mono';font-size:9px;color:var(--fog);letter-spacing:1px;}
+
+/* TOAST */
+#toast{
+  position:absolute;bottom:190px;left:50%;transform:translateX(-50%);
+  z-index:400;background:rgba(10,18,28,0.95);border:1px solid var(--cyan);
+  padding:8px 18px;font-family:'Share Tech Mono';font-size:11px;
+  color:var(--cyan);letter-spacing:1px;pointer-events:none;
+  opacity:0;transition:opacity 0.3s;white-space:nowrap;
+}
+#toast.show{opacity:1;}
+
+/* VUI STEPS */
+.vstep{flex:1;height:4px;background:var(--border);border-radius:2px;transition:all 0.3s;}
+.vstep.done{background:var(--green);}
+.vstep.active{background:var(--cyan);animation:stepblink 0.8s infinite;}
+@keyframes stepblink{0%,100%{opacity:1}50%{opacity:0.4}}
+/* VUI DATA ROWS */
+.vd-row{display:flex;gap:6px;margin-bottom:5px;align-items:flex-start;}
+.vd-row:last-child{margin-bottom:0;}
+.vd-lbl{font-family:'Share Tech Mono';font-size:9px;color:var(--fog);letter-spacing:2px;width:56px;flex-shrink:0;padding-top:2px;}
+.vd-val{font-size:13px;color:var(--white);line-height:1.4;word-break:break-word;}
+.vd-val.set{color:var(--cyan);}
+/* AUTOCOMPLETE */
+#ac-list{
+  position:absolute;left:0;right:0;top:100%;z-index:500;
+  background:var(--card);border:1px solid var(--blue);
+  max-height:200px;overflow-y:auto;display:none;
+}
+#ac-list.show{display:block;}
+.ac-item{
+  padding:8px 10px;font-size:13px;cursor:pointer;
+  border-bottom:1px solid var(--border);line-height:1.3;
+  transition:background 0.15s;
+}
+.ac-item:last-child{border-bottom:none;}
+.ac-item:hover,.ac-item.selected{background:var(--border);}
+.ac-item .ac-main{color:var(--white);font-weight:600;}
+.ac-item .ac-sub{font-family:'Share Tech Mono';font-size:10px;color:var(--fog);margin-top:2px;}
+</style>
+</head>
+<body>
+
+<div id="map"></div>
+<div id="zone-flash"></div>
+<div id="hand-l"></div>
+<div id="hand-r"></div>
+<div id="dwell-ring"></div>
+<canvas id="dwell-canvas" width="80" height="80"></canvas>
+
+<div id="popup-card">
+  <div class="popup-type"  id="p-type"></div>
+  <div class="popup-title" id="p-title"></div>
+  <div class="popup-loc"   id="p-loc"></div>
+  <div class="popup-desc"  id="p-desc"></div>
+  <div class="popup-time"  id="p-time"></div>
+</div>
+
+<div id="header">
+  <div class="emblem">🌊</div>
+  <div class="header-text">
+    <div class="sup">Sistem Zaščite in Reševanja</div>
+    <div class="main">INTERVENCIJSKI PREGLED</div>
+  </div>
+  <div>
+    <div id="clock"></div>
+    <div id="int-header-count"></div>
+  </div>
+</div>
+
+<div id="gesture-hud"></div>
+
+<div id="sidebar">
+  <!-- VUI – popolnoma glasovni vnos -->
+  <div class="section-label">// Glasovni Vnos (VUI)</div>
+
+  <!-- KORAK INDIKATOR -->
+  <div id="vui-steps" style="display:flex;gap:4px;margin-bottom:2px;">
+    <div class="vstep" id="vs1" title="Opis"></div>
+    <div class="vstep" id="vs2" title="Lokacija"></div>
+    <div class="vstep" id="vs3" title="Vrsta"></div>
+    <div class="vstep" id="vs4" title="Potrditev"></div>
+  </div>
+
+  <button id="vui-btn" onclick="vuiStart()">🎙 <span id="vui-label">ZAČNI VNOS</span></button>
+
+  <div id="voice-wave">
+    <div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div>
+    <div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div>
+    <div class="wave-bar"></div>
+  </div>
+
+  <div id="vui-status">Pritisnite gumb za začetek glasovnega vnosa.</div>
+
+  <!-- ZBRANI PODATKI (posodablja se sproti) -->
+  <div id="vui-data" style="display:none;background:var(--card);border:1px solid var(--border);padding:10px 12px;">
+    <div class="vd-row" id="vd-opis-row">
+      <span class="vd-lbl">OPIS</span>
+      <span class="vd-val" id="vd-opis">–</span>
+    </div>
+    <div class="vd-row" id="vd-lok-row">
+      <span class="vd-lbl">LOKACIJA</span>
+      <span class="vd-val" id="vd-lok">–</span>
+    </div>
+    <div class="vd-row" id="vd-vrsta-row">
+      <span class="vd-lbl">VRSTA</span>
+      <span class="vd-val" id="vd-vrsta">–</span>
+    </div>
+  </div>
+
+  <hr class="divider">
+
+  <div class="section-label">// Gesture Control (Strojni Vid)</div>
+  <button id="gesture-btn" onclick="toggleGesture()">🖐 <span id="gesture-label">AKTIVIRAJ GESTURE</span></button>
+  <div class="status-row" style="margin-top:4px;">
+    <div class="dot" id="gesture-dot"></div>
+    <span id="gesture-txt">Kamera ni aktivna</span>
+  </div>
+  <div id="gesture-legend">
+    <div class="gl-row"><span class="gl-icon">✊</span><span class="gl-txt" id="gl-palm">PEST + premik roke = pomik karte</span></div>
+    <div class="gl-row"><span class="gl-icon">✌</span><span class="gl-txt" id="gl-zoom">KAZALEC + SREDINEC, premik gor = zoom out, dol = zoom in</span></div>
+    <div class="gl-row"><span class="gl-icon">☝</span><span class="gl-txt" id="gl-point">KAZALEC = kurzor / drži 1s nad markerjem → odpri</span></div>
+    <div class="gl-row"><span class="gl-icon">✊</span><span class="gl-txt" id="gl-fist" style="display:none"></span></div>
+  </div>
+
+  <hr class="divider">
+
+  <div class="section-label">// Intervencije (<span id="cnt">0</span>)</div>
+  <div id="intervention-list">
+    <div style="font-family:'Share Tech Mono';font-size:11px;color:var(--border);padding:6px 0;">Ni vnosov...</div>
+  </div>
+</div>
+
+<div id="cam-wrap">
+  <div id="cam-container">
+    <video id="cam-video" playsinline autoplay muted></video>
+    <canvas id="cam-canvas"></canvas>
+  </div>
+  <div id="cam-label">▶ GESTURE CAM  |  ✊ pest=pan  ✌ 2 prsta gor/dol=zoom  ☝ kazalec=pointer</div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+// ═══════════════════════════════════════════════════════
+// DATA
+// ═══════════════════════════════════════════════════════
+const TYPE_COLOR={poplava:'#1e88e5',neurje:'#7c4dff',plaz:'#795548',potres:'#ff6f00',onesnazenje:'#43a047',ostalo:'#5a7080'};
+const TYPE_LABEL={poplava:'🌊 POPLAVA',neurje:'⛈ NEURJE / TOČA',plaz:'🪨 ZEMELJSKI PLAZ',potres:'📳 POTRES',onesnazenje:'☣ ONESNAŽENJE VODE',ostalo:'📋 OSTALO'};
+const DEMO=[
+  {id:1,opis:'Poplava stanovanjskih prostorov',lok:'Celje',vrsta:'poplava',lat:46.2301,lng:15.2677,cas:'07:14'},
+  {id:2,opis:'Neurje s točo – poškodbe streh',lok:'Maribor',vrsta:'neurje',lat:46.5547,lng:15.6459,cas:'13:55'},
+  {id:3,opis:'Zemeljski plaz na lokalni cesti',lok:'Litija',vrsta:'plaz',lat:46.0594,lng:14.8282,cas:'09:30'},
+  {id:4,opis:'Onesnaženje potoka Glinščica',lok:'Ljubljana',vrsta:'onesnazenje',lat:46.0569,lng:14.5058,cas:'11:20'},
+  {id:5,opis:'Potres M3.2 – pregled objektov',lok:'Brežice',vrsta:'potres',lat:45.9045,lng:15.5924,cas:'04:47'},
+];
+
+// ═══════════════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════════════
+let map, interventions=[], markers={}, popupOpen=false;
+let vuiState='idle', rec=null, recRunning=false;
+let gestureActive=false, handsInst=null, mpCam=null;
+let videoEl,camCanvas,camCtx;
+
+// Two-hand tracking
+const H={
+  l:{x:0.5,y:0.5,hist:[],sm:{x:0.5,y:0.5},gesture:'none',active:false},
+  r:{x:0.5,y:0.5,hist:[],sm:{x:0.5,y:0.5},gesture:'none',active:false},
+};
+
+// Pan state (left hand palm)
+let panRef=null; // {smX,smY,mapCenter}
+
+// Zoom state (two hands)
+let zoomRef=null; // {dist, zoom}
+
+// Dwell state (right hand point)
+let dwellId=null, dwellTimer=null, dwellStart=0;
+const DWELL_MS=1000, DWELL_R=60;
+let dwellAnimFrame=null;
+
+// Gesture cooldown
+let lastZoom=0;
+
+// ═══════════════════════════════════════════════════════
+// CLOCK
+// ═══════════════════════════════════════════════════════
+setInterval(()=>{const n=new Date(),p=v=>String(v).padStart(2,'0');document.getElementById('clock').textContent=`${p(n.getHours())}:${p(n.getMinutes())}:${p(n.getSeconds())}`;},1000);
+
+// ═══════════════════════════════════════════════════════
+// MAP
+// ═══════════════════════════════════════════════════════
+function initMap(){
+  map=L.map('map',{center:[46.15,14.99],zoom:8,zoomControl:false,attributionControl:false});
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{subdomains:'abcd',maxZoom:19}).addTo(map);
+  DEMO.forEach(d=>{interventions.push(d);addMarker(d);});
+  updateSidebar();
+
+  // Detekcija file:// protokola – fetch klici ne delajo
+  if(location.protocol==='file:'){
+    showFileWarning();
+  }
+}
+
+function showFileWarning(){
+  const w=document.createElement('div');
+  w.style.cssText=`position:fixed;top:0;left:0;right:0;z-index:9999;
+    background:rgba(255,111,0,0.97);color:#000;padding:14px 20px;
+    font-family:'Share Tech Mono',monospace;font-size:12px;line-height:1.8;
+    display:flex;align-items:center;gap:20px;`;
+  w.innerHTML=`
+    <div style="font-size:22px;">⚠️</div>
+    <div style="flex:1;">
+      <strong>POTREBEN LOKALNI STREŽNIK</strong> – datoteka odprta kot file://, kar blokira fetch (autocomplete, gesture kamera).<br>
+      <strong>Rešitev 1:</strong> VS Code → namestite razširitev <em>Live Server</em> → desni klik na HTML → <em>Open with Live Server</em><br>
+      <strong>Rešitev 2:</strong> CMD v mapi z datoteko: <code style="background:rgba(0,0,0,0.2);padding:1px 5px;">python -m http.server 8080</code> → odprite <strong>http://localhost:8080</strong>
+    </div>
+    <button onclick="this.parentNode.remove()" style="background:none;border:1px solid #000;padding:4px 10px;cursor:pointer;font-size:16px;">✕</button>`;
+  document.body.appendChild(w);
+}
+function mkIcon(vrsta){
+  const c=TYPE_COLOR[vrsta]||'#5a7080';
+  return L.divIcon({className:'',html:`<svg xmlns="http://www.w3.org/2000/svg" width="30" height="38" viewBox="0 0 30 38">
+    <path d="M15 0C6.7 0 0 6.7 0 15 0 26 15 38 15 38S30 26 30 15C30 6.7 23.3 0 15 0Z" fill="${c}" stroke="rgba(0,0,0,0.4)" stroke-width="1.5"/>
+    <circle cx="15" cy="15" r="6" fill="rgba(0,0,0,0.35)"/><circle cx="15" cy="15" r="3.5" fill="rgba(255,255,255,0.9)"/>
+  </svg>`,iconSize:[30,38],iconAnchor:[15,38]});
+}
+function addMarker(iv){
+  const m=L.marker([iv.lat,iv.lng],{icon:mkIcon(iv.vrsta)}).addTo(map);
+  m.on('click',()=>showPopup(iv));
+  const el=m.getElement();
+  if(el) el.style.filter=`drop-shadow(0 0 7px ${TYPE_COLOR[iv.vrsta]})`;
+  markers[iv.id]=m;
+}
+function showPopup(iv,x,y){
+  if(!x){
+    const pt=map.latLngToContainerPoint([iv.lat,iv.lng]);
+    x=pt.x+22;y=pt.y-55;
+    if(x+270>window.innerWidth-340) x=pt.x-292;
+    if(y<65) y=pt.y+12;
+  }
+  document.getElementById('p-type').textContent=TYPE_LABEL[iv.vrsta]||'OSTALO';
+  document.getElementById('p-title').textContent=iv.opis;
+  document.getElementById('p-loc').textContent='📍 '+iv.lok;
+  document.getElementById('p-desc').textContent=iv.opis;
+  document.getElementById('p-time').textContent='🕐 '+(iv.cas||'--:--');
+  const card=document.getElementById('popup-card');
+  card.style.left=x+'px';card.style.top=y+'px';card.style.display='block';
+  popupOpen=true;
+}
+function hidePopup(){document.getElementById('popup-card').style.display='none';popupOpen=false;dwellId=null;cancelDwellAnim();}
+function updateSidebar(){
+  const cnt=interventions.length;
+  document.getElementById('cnt').textContent=cnt;
+  document.getElementById('int-header-count').textContent=cnt+' INTERVENCIJ';
+  const list=document.getElementById('intervention-list');
+  if(!cnt){list.innerHTML='<div style="font-family:\'Share Tech Mono\';font-size:11px;color:var(--border);padding:6px 0;">Ni vnosov...</div>';return;}
+  list.innerHTML='';
+  [...interventions].reverse().forEach(iv=>{
+    const d=document.createElement('div');
+    d.className=`int-card type-${iv.vrsta}`;
+    d.innerHTML=`<div class="int-badge">${TYPE_LABEL[iv.vrsta]}</div>
+      <div class="int-desc">${iv.opis}</div>
+      <div class="int-meta">📍 ${iv.lok} &nbsp;|&nbsp; 🕐 ${iv.cas||'--:--'}</div>`;
+    d.onclick=()=>{map.flyTo([iv.lat,iv.lng],14,{duration:1.5});showPopup(iv);};
+    list.appendChild(d);
+  });
+}
+
+// ═══════════════════════════════════════════════════════
+// GEOCODING – Photon primary, Nominatim fallback
+// ═══════════════════════════════════════════════════════
+// GEOCODING – Nominatim, točne koordinate iz izbire
+// ═══════════════════════════════════════════════════════
+let selectedLocation=null; // {lat,lng,display} – nastavljeno ko user izbere iz AC
+
+async function nominatimSearch(q){
+  try{
+    const url=`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}&limit=7&countrycodes=si&addressdetails=1&accept-language=sl`;
+    const r=await fetch(url,{headers:{'Accept-Language':'sl,en'}});
+    const d=await r.json();
+    return d||[];
+  }catch(e){return [];}
+}
+
+// ── AUTOCOMPLETE ──
+let acTimer=null, acResults=[], acIdx=-1;
+
+function acInput(){
+  const q=document.getElementById('m-lok').value.trim();
+  selectedLocation=null;
+  document.getElementById('loc-ok').style.display='none';
+  clearTimeout(acTimer);
+  if(q.length<3){acHide();return;}
+  acTimer=setTimeout(async()=>{
+    const results=await nominatimSearch(q);
+    acResults=results;
+    acIdx=-1;
+    const list=document.getElementById('ac-list');
+    list.innerHTML='';
+    if(!results.length){acHide();return;}
+    results.forEach((r,i)=>{
+      const item=document.createElement('div');
+      item.className='ac-item';
+      // Razčleni naslov
+      const a=r.address||{};
+      const main=[a.road,a.house_number].filter(Boolean).join(' ')||r.display_name.split(',')[0];
+      const sub=[a.suburb,a.village||a.town||a.city,a.postcode].filter(Boolean).join(', ');
+      item.innerHTML=`<div class="ac-main">${main}</div><div class="ac-sub">${sub||r.display_name.substring(0,60)}</div>`;
+      item.onmousedown=()=>acSelect(i);
+      list.appendChild(item);
+    });
+    list.classList.add('show');
+  },300);
+}
+
+function acKey(e){
+  const list=document.getElementById('ac-list');
+  if(!list.classList.contains('show')) return;
+  if(e.key==='ArrowDown'){e.preventDefault();acIdx=Math.min(acIdx+1,acResults.length-1);acHighlight();}
+  else if(e.key==='ArrowUp'){e.preventDefault();acIdx=Math.max(acIdx-1,0);acHighlight();}
+  else if(e.key==='Enter'){e.preventDefault();if(acIdx>=0)acSelect(acIdx);}
+  else if(e.key==='Escape'){acHide();}
+}
+
+function acHighlight(){
+  document.querySelectorAll('.ac-item').forEach((el,i)=>{
+    el.classList.toggle('selected',i===acIdx);
+  });
+}
+
+function acSelect(i){
+  const r=acResults[i];
+  const a=r.address||{};
+  const main=[a.road,a.house_number].filter(Boolean).join(' ')||r.display_name.split(',')[0];
+  const sub=[a.suburb,a.village||a.town||a.city].filter(Boolean).join(', ');
+  const label=main+(sub?', '+sub:'');
+  document.getElementById('m-lok').value=label;
+  selectedLocation={lat:parseFloat(r.lat),lng:parseFloat(r.lon),display:label};
+  document.getElementById('loc-ok').style.display='inline';
+  acHide();
+}
+
+function acHide(){
+  document.getElementById('ac-list').classList.remove('show');
+}
+
+// Klik zunaj zapre autocomplete
+document.addEventListener('click',e=>{
+  if(!e.target.closest('#m-lok')&&!e.target.closest('#ac-list')) acHide();
+});
+
+// ═══════════════════════════════════════════════════════
+// VUI – GLASOVNI ČAROVNIK (brez miške)
+// Koraki: opis → lokacija → vrsta → potrditev (da/ne/ponovi)
+// ═══════════════════════════════════════════════════════
+
+// TTS – sintetični glas za navodila
+// ZAMIK po koncu govora preden se vklopi mikrofon
+const TTS_DELAY = 700; // ms po koncu TTS preden odpremo mikrofon
+
+function speak(txt, onEnd){
+  if(!window.speechSynthesis){
+    if(onEnd) setTimeout(onEnd, 300);
+    return;
+  }
+  speechSynthesis.cancel();
+
+  // Chrome bug: getVoices() je async – počakamo da se naloži
+  function doSpeak(){
+    const u=new SpeechSynthesisUtterance(txt);
+    u.lang='sl-SI'; u.rate=0.95; u.pitch=1;
+    const voices=speechSynthesis.getVoices();
+    const voice=voices.find(v=>v.lang.startsWith('sl'))||
+                voices.find(v=>v.lang.startsWith('hr'))||
+                voices.find(v=>v.lang.startsWith('sr'))||
+                voices.find(v=>v.lang.startsWith('en'))||null;
+    if(voice) u.voice=voice;
+
+    u.onend=()=>{
+      // Zamik po koncu govora – mikrofon se ne sme takoj vklopiti
+      if(onEnd) setTimeout(onEnd, TTS_DELAY);
+    };
+    // Chrome safety: onend se včasih ne sproži – fallback timer
+    const fallbackMs = Math.max(txt.length * 80, 1500) + TTS_DELAY;
+    const fallback=setTimeout(()=>{
+      if(speechSynthesis.speaking) return; // še govori, ne prekinjaj
+      if(onEnd) setTimeout(onEnd, TTS_DELAY);
+    }, fallbackMs);
+    u.onend=()=>{ clearTimeout(fallback); if(onEnd) setTimeout(onEnd, TTS_DELAY); };
+
+    speechSynthesis.speak(u);
+  }
+
+  // Počakaj na glasove če še niso naloženi
+  if(speechSynthesis.getVoices().length > 0){
+    doSpeak();
+  } else {
+    speechSynthesis.onvoiceschanged=()=>{ speechSynthesis.onvoiceschanged=null; doSpeak(); };
+    // Fallback če onvoiceschanged ne sproži
+    setTimeout(doSpeak, 500);
+  }
+}
+
+// Stanje čarovnika
+const W={
+  step:'idle',   // idle|opis|lokacija|vrsta|confirm|saving
+  opis:null, lokacija:null, vrsta:null,
+  lokGeo:null    // {lat,lng} iz Nominatim
+};
+
+function vuiSt(msg,col){
+  const el=document.getElementById('vui-status');
+  el.textContent=msg;
+  el.style.borderLeftColor=col||'var(--blue)';
+}
+function vuiBtn(recording){
+  document.getElementById('vui-btn').classList.toggle('recording',recording);
+  document.getElementById('vui-label').textContent=recording?'POSLUŠA...':'ZAČNI VNOS';
+  document.getElementById('voice-wave').classList.toggle('active',recording);
+}
+function setStep(n){ // 0=none, 1-4
+  ['vs1','vs2','vs3','vs4'].forEach((id,i)=>{
+    const el=document.getElementById(id);
+    el.className='vstep'+(i+1<n?' done':i+1===n?' active':'');
+  });
+}
+function setData(field, val){
+  const el=document.getElementById('vd-'+field);
+  if(el){ el.textContent=val||'–'; el.className='vd-val'+(val?' set':''); }
+  document.getElementById('vui-data').style.display='block';
+}
+
+// Zaženi čarovnik
+function vuiStart(){
+  if(!('webkitSpeechRecognition' in window||'SpeechRecognition' in window)){
+    vuiSt('❌ Uporabite Chrome ali Edge.','var(--red)'); return;
+  }
+  if(W.step!=='idle'){
+    speechSynthesis.cancel();
+    stopRec();
+    W.step='idle'; setStep(0);
+    vuiSt('Preklicano. Pritisnite gumb za ponovni začetek.');
+    vuiBtn(false);
+    return;
+  }
+  W.opis=null; W.lokacija=null; W.vrsta=null; W.lokGeo=null;
+  setData('opis',null); setData('lok',null); setData('vrsta',null);
+  document.getElementById('vui-data').style.display='none';
+  askOpis();
+}
+
+function askOpis(){
+  W.step='opis'; setStep(1);
+  vuiSt('🎙 Opišite dogodek...','var(--cyan)');
+  speak('Opišite intervencijo.', ()=>listenFor('opis'));
+}
+function askLokacija(){
+  W.step='lokacija'; setStep(2);
+  vuiSt('🎙 Povejte lokacijo (naslov ali kraj)...','var(--cyan)');
+  speak('Povejte lokacijo ali naslov.', ()=>listenFor('lokacija'));
+}
+function askVrsta(){
+  W.step='vrsta'; setStep(3);
+  vuiSt('🎙 Vrsta? Poplava, neurje, plaz, potres, onesnaženje ali ostalo...','var(--cyan)');
+  speak('Katera je vrsta intervencije?', ()=>listenFor('vrsta'));
+}
+function askConfirm(){
+  W.step='confirm'; setStep(4);
+  const msg=`Opis: ${W.opis}. Lokacija: ${W.lokacija}. Vrsta: ${W.vrsta}. Recite DA za potrditev, NE za preklic, ali PONOVI za ponovitev koraka.`;
+  vuiSt(`Opis: ${W.opis}\nLokacija: ${W.lokacija}\nVrsta: ${W.vrsta}\n\n🎙 Recite DA / NE / PONOVI`,'var(--amber)');
+  speak(msg, ()=>listenFor('confirm'));
+}
+
+// Razpoznavanje za posamezen korak
+function listenFor(step){
+  if(W.step!==step) return;
+
+  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+  rec=new SR();
+  rec.lang='sl-SI'; rec.continuous=false; rec.interimResults=true; rec.maxAlternatives=3;
+
+  // Čas zagona mikrofona – ignoriramo rezultate prvih 400ms
+  let startTime=null;
+  const GRACE_MS=400;
+  let done=false;
+
+  recRunning=true; vuiBtn(true);
+
+  rec.onstart=()=>{ startTime=Date.now(); };
+
+  rec.onresult=e=>{
+    // Ignoriraj rezultate ki prišli takoj po zagonu (ostanek TTS zvoka)
+    if(startTime && Date.now()-startTime < GRACE_MS) return;
+
+    const live=e.results[0][0].transcript;
+    vuiSt('💬 "'+live+'"','var(--cyan)');
+    if(e.results[e.results.length-1].isFinal && !done){
+      done=true;
+      const best=e.results[0][0].transcript.trim();
+      handleResult(step, best);
+    }
+  };
+
+  rec.onerror=e=>{
+    recRunning=false; vuiBtn(false);
+    if(e.error==='no-speech'){
+      vuiSt('⚠️ Ni govora – poskusite znova...','var(--amber)');
+      setTimeout(()=>{ if(W.step===step) listenFor(step); }, 800);
+    } else if(e.error==='not-allowed'){
+      vuiSt('❌ Mikrofon zavrnjen.','var(--red)'); W.step='idle';
+    } else if(e.error==='aborted'){
+      // Namerno preklicano – ne ponovi
+    } else {
+      setTimeout(()=>{ if(W.step===step) listenFor(step); }, 1000);
+    }
+  };
+
+  rec.onend=()=>{ recRunning=false; vuiBtn(false); };
+  rec.start();
+}
+
+function stopRec(){
+  if(rec) try{ rec.abort(); }catch(e){}
+  recRunning=false; vuiBtn(false);
+}
+
+async function handleResult(step, txt){
+  stopRec();
+  const tl=txt.toLowerCase();
+
+  if(step==='opis'){
+    W.opis=txt.charAt(0).toUpperCase()+txt.slice(1);
+    setData('opis', W.opis);
+    speak('Ho, razumljeno. Zdaj lokacija.', ()=>askLokacija());
+
+  } else if(step==='lokacija'){
+    setData('lok', txt);
+    vuiSt('⏳ Iščem lokacijo "'+txt+'"...','var(--amber)');
+
+    const HEADERS={'Accept-Language':'sl,en','User-Agent':'IntervencijskiSistem/1.0'};
+    const SI={minLat:44.9,maxLat:47.4,minLng:12.8,maxLng:17.1};
+
+    // ── Znane lokacije z natančnimi koordinatami ─────────────
+    const KNOWN={
+      'zgornja hajdina':{lat:46.3878,lng:15.8833,name:'Zgornja Hajdina'},
+      'spodnja hajdina':{lat:46.3856,lng:15.8911,name:'Spodnja Hajdina'},
+      'hajdina':        {lat:46.3867,lng:15.8872,name:'Hajdina'},
+      'maribor':        {lat:46.5547,lng:15.6459,name:'Maribor'},
+      'ptuj':           {lat:46.4200,lng:15.8700,name:'Ptuj'},
+      'celje':          {lat:46.2301,lng:15.2677,name:'Celje'},
+      'ljubljana':      {lat:46.0569,lng:14.5058,name:'Ljubljana'},
+      'kranj':          {lat:46.2389,lng:14.3556,name:'Kranj'},
+      'velenje':        {lat:46.3592,lng:15.1118,name:'Velenje'},
+      'koper':          {lat:45.5483,lng:13.7303,name:'Koper'},
+      'novo mesto':     {lat:45.8010,lng:15.1707,name:'Novo Mesto'},
+      'nova gorica':    {lat:45.9564,lng:13.6503,name:'Nova Gorica'},
+      'murska sobota':  {lat:46.6625,lng:16.1667,name:'Murska Sobota'},
+      'brežice':        {lat:45.9045,lng:15.5924,name:'Brežice'},
+      'litija':         {lat:46.0594,lng:14.8282,name:'Litija'},
+    };
+
+    // Sklanjatve → osnovna oblika
+    const ALIASES={
+      'zgornji hajdini':'zgornja hajdina','spodnji hajdini':'spodnja hajdina',
+      'zgornje hajdine':'zgornja hajdina','spodnje hajdine':'spodnja hajdina',
+      'hajdini':'hajdina','hajdine':'hajdina',
+      'mariboru':'maribor','mariborju':'maribor',
+      'ptuju':'ptuj','celju':'celje','ljubljani':'ljubljana',
+      'kranju':'kranj','velenju':'velenje','kopru':'koper',
+      'novem mestu':'novo mesto','novi gorici':'nova gorica',
+      'murski soboti':'murska sobota','brežicah':'brežice','litiji':'litija',
+    };
+
+    // ── Pretvori besedne številke → cifre ────────────────────
+    function wordsToNum(s){
+      const map={
+        'nič':0,'ena':1,'eno':1,'en':1,'dve':2,'dva':2,'tri':3,'štiri':4,'pet':5,
+        'šest':6,'sedem':7,'osem':8,'devet':9,
+        'deset':10,'enajst':11,'dvanajst':12,'trinajst':13,'štirinajst':14,
+        'petnajst':15,'šestnajst':16,'sedemnajst':17,'osemnajst':18,'devetnajst':19,
+        'dvajset':20,'trideset':30,'štirideset':40,'petdeset':50,
+        'šestdeset':60,'sedemdeset':70,'osemdeset':80,'devetdeset':90,
+        'sto':100,'dvesto':200,'tristo':300,'štiristo':400,'petsto':500,
+        'šeststo':600,'sedemsto':700,'osemsto':800,'devetsto':900,
+      };
+      let tl=s.toLowerCase(), n=0;
+      // Daljše najprej
+      Object.entries(map).sort((a,b)=>b[0].length-a[0].length).forEach(([k,v])=>{
+        if(tl.includes(k)){n+=v;tl=tl.replace(k,'');}
+      });
+      return n>0?n:null;
+    }
+
+    function normalizeInput(s){
+      const num=wordsToNum(s);
+      if(!num) return s;
+      const numWords=['nič','ena','eno','en','dve','dva','tri','štiri','pet','šest','sedem','osem','devet',
+        'deset','enajst','dvanajst','trinajst','štirinajst','petnajst','šestnajst','sedemnajst',
+        'osemnajst','devetnajst','dvajset','trideset','štirideset','petdeset','šestdeset',
+        'sedemdeset','osemdeset','devetdeset','sto','dvesto','tristo','štiristo','petsto',
+        'šeststo','sedemsto','osemsto','devetsto','in'];
+      let cleaned=s.toLowerCase();
+      numWords.forEach(w=>{cleaned=cleaned.replace(new RegExp('\\b'+w+'\\b','g'),'');});
+      return cleaned.replace(/\s+/g,' ').trim()+' '+num;
+    }
+
+    // Normaliziraj + aliasi
+    let cleanTxt=normalizeInput(txt).trim();
+    let tlClean=cleanTxt.toLowerCase();
+    for(const[alias,canon] of Object.entries(ALIASES)){
+      if(tlClean.includes(alias)){tlClean=tlClean.replace(alias,canon);cleanTxt=tlClean;break;}
+    }
+    W.lokacija=cleanTxt;
+    console.log('VUI lokacija:', txt, '→', cleanTxt);
+
+    // ── Poišči hišno številko ────────────────────────────────
+    const numMatch=cleanTxt.match(/^(.*?)\s+(\d+[a-z]?)\s*(.*)$/i);
+    const placePart=numMatch?numMatch[1].trim():cleanTxt;
+    const hnum=numMatch?numMatch[2]:null;
+    const cityPart=numMatch?numMatch[3].trim():'';
+
+    // ── Poišči znano bazo ────────────────────────────────────
+    let knownBase=null;
+    for(const[key,val] of Object.entries(KNOWN).sort((a,b)=>b[0].length-a[0].length)){
+      if(tlClean.includes(key)){knownBase={key,val};break;}
+    }
+
+    let geo=null;
+
+    async function tryFetch(url){
+      console.log('GEOCODE:', url);
+      const r=await fetch(url,{headers:HEADERS});
+      const d=await r.json();
+      console.log('RESPONSE:', d?.length, d?.[0]?.display_name);
+      if(!d?.length) return null;
+      const best=d.filter(x=>{const lt=parseFloat(x.lat),ln=parseFloat(x.lon);return lt>=SI.minLat&&lt<=SI.maxLat&&ln>=SI.minLng&&ln<=SI.maxLng;})[0]||d[0];
+      return best?{lat:parseFloat(best.lat),lng:parseFloat(best.lon),name:best.display_name}:null;
+    }
+
+    async function tryStructured(street,city){
+      const p=new URLSearchParams({format:'json',addressdetails:'1',limit:'5',countrycodes:'si',street,city,country:'Slovenia'});
+      return tryFetch('https://nominatim.openstreetmap.org/search?'+p);
+    }
+
+    async function tryQ(q){
+      return tryFetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}&limit=5&countrycodes=si&addressdetails=1`);
+    }
+
+    if(knownBase && hnum){
+      const sName=knownBase.val.name; // npr. "Zgornja Hajdina"
+      // 1. Strukturiran: street="Zgornja Hajdina 153", city="Zgornja Hajdina"
+      geo=await tryStructured(`${sName} ${hnum}`, sName);
+      // 2. Free-text z znano obliko
+      if(!geo) geo=await tryQ(`${sName} ${hnum}, Slovenija`);
+      // 3. Centroid + hišna številka (prikazni fallback)
+      if(!geo) geo={lat:knownBase.val.lat,lng:knownBase.val.lng,name:`${sName} ${hnum}, ${sName}`};
+
+    } else if(knownBase){
+      // Samo kraj brez hišne
+      geo={lat:knownBase.val.lat,lng:knownBase.val.lng,name:knownBase.val.name};
+
+    } else if(hnum){
+      // Neznana lokacija z hišno številko
+      if(cityPart){
+        geo=await tryStructured(`${placePart} ${hnum}`,cityPart)
+          || await tryQ(`${placePart} ${hnum}, ${cityPart}, Slovenija`)
+          || await tryQ(`${cityPart}, Slovenija`);
+      } else {
+        geo=await tryStructured(`${placePart} ${hnum}`,placePart)
+          || await tryQ(`${placePart} ${hnum}, Slovenija`)
+          || await tryQ(`${placePart}, Slovenija`);
+      }
+    } else {
+      // Samo kraj, brez hišne
+      geo=await tryQ(`${cleanTxt}, Slovenija`) || await tryQ(cleanTxt);
+    }
+
+    if(geo){
+      W.lokGeo={lat:geo.lat,lng:geo.lng};
+      const parts=geo.name.split(',').map(s=>s.trim()).filter(Boolean);
+      const short=parts.slice(0,3).join(', ');
+      W.lokacija=short;
+      setData('lok',short);
+      vuiSt('📍 '+short,'var(--green)');
+      speak('Najdena lokacija: '+parts[0]+'. Katera je vrsta intervencije?',()=>askVrsta());
+    } else {
+      W.lokGeo=null;
+      W.lokacija=cleanTxt;
+      vuiSt('⚠️ Lokacije nisem našel.\nShranjujem kot: "'+cleanTxt+'"','var(--amber)');
+      speak('Lokacije nisem našel. Shranjujem kot: '+cleanTxt+'. Katera je vrsta?',()=>askVrsta());
+    }
+
+  } else if(step==='vrsta'){
+    let vrsta='ostalo';
+    for(const[v,keys] of Object.entries(VRSTA_KEYS)){
+      if(keys.some(k=>tl.includes(k))){ vrsta=v; break; }
+    }
+    // Direktne besede
+    if(tl.includes('poplav')) vrsta='poplava';
+    else if(tl.includes('neurj')||tl.includes('toč')) vrsta='neurje';
+    else if(tl.includes('plaz')||tl.includes('usad')) vrsta='plaz';
+    else if(tl.includes('potres')) vrsta='potres';
+    else if(tl.includes('onesnažen')||tl.includes('kemij')) vrsta='onesnazenje';
+    W.vrsta=vrsta;
+    setData('vrsta', vrsta);
+    askConfirm();
+
+  } else if(step==='confirm'){
+    if(tl.includes('da')||tl.includes('potrdi')||tl.includes('ja')||tl.includes('ok')){
+      W.step='saving';
+      vuiSave();
+    } else if(tl.includes('ponovi')||tl.includes('znova')||tl.includes('ne vem')){
+      speak('Ponavljam povzetek.', ()=>askConfirm());
+    } else if(tl.includes('opis')){
+      speak('Ponavljamo opis.', ()=>askOpis());
+    } else if(tl.includes('lokacij')){
+      speak('Ponavljamo lokacijo.', ()=>askLokacija());
+    } else if(tl.includes('vrst')){
+      speak('Ponavljamo vrsto.', ()=>askVrsta());
+    } else if(tl.includes('ne')||tl.includes('prekliči')){
+      W.step='idle'; setStep(0);
+      vuiSt('Preklicano. Pritisnite gumb za nov vnos.','var(--fog)');
+      speak('Vnos preklican.');
+    } else {
+      speak('Nisem razumel. Recite DA za potrditev ali NE za preklic.', ()=>listenFor('confirm'));
+    }
+  }
+}
+
+async function vuiSave(){
+  setStep(4);
+  vuiSt('⏳ Shranjujem intervencijo...','var(--amber)');
+
+  // Če koordinat še nimamo, poskusi še enkrat
+  if(!W.lokGeo && W.lokacija){
+    try{
+      const url=`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(W.lokacija+', Slovenija')}&limit=1&countrycodes=si`;
+      const r=await fetch(url,{headers:{'Accept-Language':'sl,en'}});
+      const d=await r.json();
+      if(d&&d.length) W.lokGeo={lat:parseFloat(d[0].lat),lng:parseFloat(d[0].lon)};
+    }catch(e){}
+  }
+
+  const now=new Date(), p=v=>String(v).padStart(2,'0');
+  const cas=p(now.getHours())+':'+p(now.getMinutes());
+  const lat=W.lokGeo?.lat ?? 46.12+(Math.random()-0.5)*0.3;
+  const lng=W.lokGeo?.lng ?? 14.99+(Math.random()-0.5)*0.4;
+  const iv={id:Date.now(), opis:W.opis, lok:W.lokacija, vrsta:W.vrsta, lat, lng, cas};
+  interventions.push(iv); addMarker(iv); updateSidebar();
+  map.flyTo([lat,lng],14,{duration:2});
+  setStep(0);
+  vuiSt('✅ Intervencija dodana!\n📍 '+W.lokacija+'\n🕐 '+cas,'var(--green)');
+  showToast('✅ '+W.opis.substring(0,40));
+  speak('Intervencija uspešno dodana.');
+  W.step='idle'; W.opis=null; W.lokacija=null; W.vrsta=null; W.lokGeo=null;
+}
+
+// ═══════════════════════════════════════════════════════
+// LOKALNI PARSER – izlušči podatke iz transkripta
+// Deluje brez API-ja, razume slovenščino
+// ═══════════════════════════════════════════════════════
+
+// ── Vrsta ──
+const VRSTA_KEYS={
+  poplava:['poplav','zalit','zalita','zalito','zaliti','poplavljen','poplavljena','poplavljeno'],
+  neurje:['neurj','toč','vihar','strela','grm','veter','sodra'],
+  plaz:['plaz','usad','podor','zdrsel','zdrsela'],
+  potres:['potres','tresla','treslo','tresenje'],
+  onesnazenje:['onesnažen','kemij','izliv','nafta','olje','strupen','razlit'],
+};
+
+// Sklanjane oblike → kanonična oblika (daljše fraze najprej!)
+const TOWN_FORMS={
+  'spodnji hajdini':'Spodnja Hajdina','zgornji hajdini':'Zgornja Hajdina',
+  'spodnja hajdina':'Spodnja Hajdina','zgornja hajdina':'Zgornja Hajdina',
+  'novem mestu':'Novo Mesto','novi gorici':'Nova Gorica',
+  'murski soboti':'Murska Sobota','škofji loki':'Škofja Loka',
+  'rogaški slatini':'Rogaška Slatina','ilirski bistrici':'Ilirska Bistrica',
+  'ravnah na koroškem':'Ravne na Koroškem','slovenj gradcu':'Slovenj Gradec',
+  'gornji radgoni':'Gornja Radgona','slovenski bistrici':'Slovenska Bistrica',
+  'ljubljani':'Ljubljana','celju':'Celje','mariboru':'Maribor','kranju':'Kranj',
+  'kopru':'Koper','velenju':'Velenje','ptuju':'Ptuj','jesenicah':'Jesenice',
+  'kamniku':'Kamnik','domžalah':'Domžale','sežani':'Sežana','idriji':'Idrija',
+  'postojni':'Postojna','litiji':'Litija','brežicah':'Brežice','laškem':'Laško',
+  'žalcu':'Žalec','ajdovščini':'Ajdovščina','tolminu':'Tolmin',
+  'radovljici':'Radovljica','logatcu':'Logatec','trebnjem':'Trebnje',
+  'grosuplju':'Grosuplje','vrhniki':'Vrhnika','bledu':'Bled','piranu':'Piran',
+  'izoli':'Izola','kočevju':'Kočevje','ribnici':'Ribnica','metliki':'Metlika',
+  'črnomljju':'Črnomelj','sevnici':'Sevnica','šentjurju':'Šentjur',
+  'šoštanju':'Šoštanj','dravogradu':'Dravograd','ravnah':'Ravne na Koroškem',
+  'mežici':'Mežica','tržiču':'Tržič','medvodah':'Medvode','hajdini':'Hajdina',
+  'vojniku':'Vojnik','polzeli':'Polzela','šempetru':'Šempeter',
+  'bovcu':'Bovec','kobaridu':'Kobarid','lendavi':'Lendava','ormožu':'Ormoža',
+  'ptujskem polju':'Ptujsko Polje','cirkulanah':'Cirkulane',
+  'krškem':'Krško','trbovljah':'Trbovlje','zagorju':'Zagorje',
+};
+
+// Kanonična mesta
+const TOWNS_CANONICAL=[
+  'Spodnja Hajdina','Zgornja Hajdina','Hajdina','Ptujsko Polje',
+  'Ljubljana','Maribor','Celje','Kranj','Koper','Novo Mesto','Velenje','Nova Gorica',
+  'Ptuj','Murska Sobota','Slovenj Gradec','Trbovlje','Krško','Jesenice','Kamnik',
+  'Domžale','Škofja Loka','Sežana','Idrija','Postojna','Litija','Brežice','Laško',
+  'Žalec','Ajdovščina','Ilirska Bistrica','Tolmin','Radovljica','Logatec','Trebnje',
+  'Grosuplje','Vrhnika','Bled','Bohinj','Piran','Izola','Kočevje','Ribnica',
+  'Metlika','Črnomelj','Sevnica','Šentjur','Mozirje','Gornja Radgona','Zagorje',
+  'Lendava','Ormož','Ruše','Slovenska Bistrica','Rogaška Slatina','Šoštanj',
+  'Dravograd','Ravne na Koroškem','Prevalje','Mežica','Tržič','Medvode',
+  'Vojnik','Polzela','Šempeter','Bovec','Kobarid','Žiri','Cirkulane',
+];
+
+// Besede ki so opis, ne naslov
+const DESCR=new Set([
+  'poplava','poplav','poplavljen','poplavljena','poplavljeno','zalit','zalita','zalito',
+  'neurje','plaz','usad','potres','onesnaženje','požar','pozar','nesreča','nesreca',
+  'objekt','hiša','hisa','klet','stanovanjski','stanovanjska','zemeljski','zemeljska',
+  'prometna','intervencija','poškodbe','poškodba','poroča','javljajo',
+]);
+
+function capitalize(s){return s?s.charAt(0).toUpperCase()+s.slice(1):s;}
+
+function parseTranscript(txt){
+  const tl=txt.toLowerCase().trim();
+  const words=tl.split(/\s+/);
+
+  // 1. Vrsta
+  let vrsta='ostalo';
+  for(const[v,keys] of Object.entries(VRSTA_KEYS)){
+    if(keys.some(k=>tl.includes(k))){ vrsta=v; break; }
+  }
+
+  let townFound=null;
+
+  // 2a. Sklanjane oblike – daljše fraze najprej (sorted by length desc)
+  const sortedForms=Object.entries(TOWN_FORMS).sort((a,b)=>b[0].length-a[0].length);
+  for(const[form,canon] of sortedForms){
+    if(tl.includes(form)){ townFound=canon; break; }
+  }
+
+  // 2b. Kanonične oblike – daljše najprej
+  if(!townFound){
+    const sortedTowns=[...TOWNS_CANONICAL].sort((a,b)=>b.length-a.length);
+    for(const town of sortedTowns){
+      if(tl.includes(town.toLowerCase())){ townFound=town; break; }
+    }
+  }
+
+  // 3. Poišči hišno številko
+  const numMatch=tl.match(/\b(\d+[a-z]?)\b/);
+  let lokacija=null;
+
+  if(numMatch){
+    const num=numMatch[1];
+    const numPos=tl.indexOf(num);
+
+    // Vzemi besede pred številko ki niso opisne – to je ulica/naselje
+    const before=tl.substring(0,numPos).trim().split(/\s+/).filter(w=>w);
+    const addrWords=[];
+    for(let i=before.length-1;i>=0;i--){
+      if(DESCR.has(before[i]) && addrWords.length>0) break;
+      if(!DESCR.has(before[i])) addrWords.unshift(before[i]);
+      if(addrWords.length>=5) break;
+    }
+    // Odstrani vodilne opisne besede
+    while(addrWords.length && DESCR.has(addrWords[0])) addrWords.shift();
+
+    // Besede po številki – morebitno mesto
+    const afterRaw=tl.substring(numPos+num.length).trim();
+    let cityAfter=null;
+    if(afterRaw){
+      cityAfter=TOWN_FORMS[afterRaw]||(TOWNS_CANONICAL.find(t=>t.toLowerCase()===afterRaw)||null);
+      if(!cityAfter){
+        // Poskusi z začetno besedo po številki
+        const firstAfter=afterRaw.split(/\s+/)[0];
+        cityAfter=TOWN_FORMS[firstAfter]||(TOWNS_CANONICAL.find(t=>t.toLowerCase()===firstAfter)||null);
+      }
+    }
+
+    const city=cityAfter||townFound;
+    if(addrWords.length>0){
+      const street=capitalize(addrWords.join(' '));
+      // Preveri da ulica ne vsebuje že mesta
+      const streetHasCity=city && addrWords.some(w=>w===city.toLowerCase().split(' ')[0]);
+      lokacija=streetHasCity ? street+' '+num : (city ? street+' '+num+', '+city : street+' '+num);
+    } else if(city){
+      lokacija=city;
+    }
+  } else {
+    lokacija=townFound||null;
+  }
+
+  // 4. Fallback: predložni vzorec za mesta brez številke
+  if(!lokacija){
+    const m=txt.match(/\b(?:v|na|pri|ob)\s+([A-ZŠŽČĐĆ][a-zšžčđćA-ZŠŽČĐĆ]+(?:\s+[A-ZŠŽČĐĆ][a-zšžčđćA-ZŠŽČĐĆ]+)?)/);
+    if(m) lokacija=m[1];
+  }
+
+  return{opis:capitalize(txt), lokacija, vrsta};
+}
+
+// ═══════════════════════════════════════════════════════
+// DODAJ INTERVENCIJO
+// ═══════════════════════════════════════════════════════
+async function addManual(){
+  const opis=document.getElementById('m-opis').value.trim();
+  const lok=document.getElementById('m-lok').value.trim();
+  const vrsta=document.getElementById('m-vrsta').value;
+  if(!opis){showToast('⚠️ Vnesite opis dogodka.');return;}
+  if(!lok){showToast('⚠️ Vnesite lokacijo.');document.getElementById('m-lok').focus();return;}
+  if(!selectedLocation){showToast('⚠️ Izberite lokacijo iz seznama!');document.getElementById('m-lok').focus();return;}
+
+  const btn=document.getElementById('add-manual-btn');btn.textContent='⏳ DODAJAM...';btn.disabled=true;
+  const now=new Date(),p=v=>String(v).padStart(2,'0');
+  const iv={
+    id:Date.now(), opis, lok:selectedLocation.display||lok, vrsta,
+    lat:selectedLocation.lat, lng:selectedLocation.lng,
+    cas:p(now.getHours())+':'+p(now.getMinutes())
+  };
+  interventions.push(iv); addMarker(iv); updateSidebar();
+  map.flyTo([iv.lat,iv.lng],16,{duration:2});
+  document.getElementById('m-opis').value='';
+  document.getElementById('m-lok').value='';
+  selectedLocation=null;
+  btn.textContent='+ DODAJ INTERVENCIJO'; btn.disabled=false;
+  showToast('✅ Dodano: '+opis.substring(0,35));
+  vuiSt('Posnemite opis intervencije.\nLokacijo vnesite spodaj.');
+}
+
+// ═══════════════════════════════════════════════════════
+// TOAST / HUD
+// ═══════════════════════════════════════════════════════
+let _ti,_hi;
+function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');clearTimeout(_ti);_ti=setTimeout(()=>t.classList.remove('show'),3200);}
+function showHUD(msg){const h=document.getElementById('gesture-hud');h.textContent=msg;h.classList.add('show');clearTimeout(_hi);_hi=setTimeout(()=>h.classList.remove('show'),1800);}
+function setFlash(z){const f=document.getElementById('zone-flash');f.className='';void f.offsetWidth;if(z)f.className=z;}
+
+// ═══════════════════════════════════════════════════════
+// GESTURE CONTROL – MediaPipe Hands (2 hands)
+// ═══════════════════════════════════════════════════════
+function toggleGesture(){gestureActive?stopGesture():startGesture();}
+
+async function startGesture(){
+  const btn=document.getElementById('gesture-btn'),dot=document.getElementById('gesture-dot'),txt=document.getElementById('gesture-txt');
+  btn.disabled=true;document.getElementById('gesture-label').textContent='NALAGANJE...';
+  dot.className='dot warn';txt.textContent='Inicializacija kamere...';
+  try{
+    videoEl=document.getElementById('cam-video');camCanvas=document.getElementById('cam-canvas');
+    camCtx=camCanvas.getContext('2d');camCanvas.width=320;camCanvas.height=240;
+    const stream=await navigator.mediaDevices.getUserMedia({video:{width:320,height:240,facingMode:'user'},audio:false});
+    videoEl.srcObject=stream;
+    await new Promise(res=>{videoEl.onloadedmetadata=()=>videoEl.play().then(res);});
+    await loadScript('https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4.1646424915/hands.js');
+    await loadScript('https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils@0.3.1640029074/camera_utils.js');
+    await loadScript('https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils@0.3.1620248257/drawing_utils.js');
+    handsInst=new Hands({locateFile:f=>`https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4.1646424915/${f}`});
+    // maxNumHands=2 for zoom gesture
+    handsInst.setOptions({maxNumHands:2,modelComplexity:0,minDetectionConfidence:0.65,minTrackingConfidence:0.6});
+    handsInst.onResults(onHandResults);
+    mpCam=new Camera(videoEl,{onFrame:async()=>{if(gestureActive)await handsInst.send({image:videoEl});},width:320,height:240});
+    mpCam.start();
+    gestureActive=true;
+    btn.classList.add('active');document.getElementById('gesture-label').textContent='GESTURE AKTIVEN';
+    dot.className='dot ok';txt.textContent='Sledenje rok aktivno';
+    document.getElementById('cam-wrap').classList.add('show');
+    document.getElementById('gesture-legend').classList.add('show');
+    document.getElementById('hand-l').style.display='block';
+    document.getElementById('hand-r').style.display='block';
+    btn.disabled=false;showHUD('✅ Gesture control aktiviran');
+  }catch(e){
+    console.error(e);dot.className='dot err';txt.textContent='Napaka: '+e.message;
+    document.getElementById('gesture-label').textContent='NAPAKA';btn.disabled=false;
+  }
+}
+function loadScript(src){
+  return new Promise((res,rej)=>{
+    if(document.querySelector(`script[src="${src}"]`)){res();return;}
+    const s=document.createElement('script');s.src=src;s.onload=res;s.onerror=rej;document.head.appendChild(s);
+  });
+}
+function stopGesture(){
+  gestureActive=false;
+  if(mpCam)try{mpCam.stop();}catch(e){}mpCam=null;
+  if(handsInst)try{handsInst.close();}catch(e){}handsInst=null;
+  if(videoEl&&videoEl.srcObject) videoEl.srcObject.getTracks().forEach(t=>t.stop());
+  document.getElementById('gesture-btn').classList.remove('active');
+  document.getElementById('gesture-label').textContent='AKTIVIRAJ GESTURE';
+  document.getElementById('gesture-dot').className='dot';
+  document.getElementById('gesture-txt').textContent='Kamera ni aktivna';
+  document.getElementById('cam-wrap').classList.remove('show');
+  document.getElementById('gesture-legend').classList.remove('show');
+  document.getElementById('hand-l').style.display='none';
+  document.getElementById('hand-r').style.display='none';
+  setFlash(null);panRef=null;zoomRef=null;cancelDwellAnim();
+}
+
+// ── Classify single hand ──
+// fist (✊) = pan  |  two fingers (✌) = zoom  |  one finger (☝) = pointer/dwell
+function classify(lm){
+  const ext=i=>lm[i].y < lm[i-2].y - 0.03; // tip above pip = extended
+  const idxUp=ext(8), midUp=ext(12), rngUp=ext(16), pnkUp=ext(20);
+  const ups=[idxUp,midUp,rngUp,pnkUp].filter(Boolean).length;
+  if(ups===0)                               return 'fist';  // ✊ pan
+  if(idxUp && midUp && !rngUp && !pnkUp)   return 'two';   // ✌ zoom
+  if(idxUp && !midUp && !rngUp && !pnkUp)  return 'point'; // ☝ kurzor
+  return 'other';
+}
+
+// ── Smooth a hand position ──
+function smooth(hand,rx,ry){
+  hand.hist.push({x:rx,y:ry});
+  if(hand.hist.length>6) hand.hist.shift();
+  hand.sm.x=hand.hist.reduce((s,p)=>s+p.x,0)/hand.hist.length;
+  hand.sm.y=hand.hist.reduce((s,p)=>s+p.y,0)/hand.hist.length;
+}
+
+// ── Map normalised hand coords → screen px (map area only) ──
+function toScreen(nx,ny){
+  const W=window.innerWidth-340,Hh=window.innerHeight;
+  return{x:nx*W,y:ny*Hh};
+}
+
+// ── Main results callback ──
+function onHandResults(results){
+  if(!gestureActive)return;
+  camCtx.clearRect(0,0,320,240);
+
+  const detected=results.multiHandLandmarks||[];
+  const handedness=results.multiHandedness||[];
+
+  // Mark hands inactive; re-activate from results
+  H.l.active=false;H.r.active=false;
+
+  detected.forEach((lm,i)=>{
+    // MediaPipe labels from its perspective; camera is mirrored in CSS
+    // "Left" in MP = user's right hand visually; flip label
+    const mpLabel=handedness[i]?.label||'Right';
+    const side=mpLabel==='Left'?'r':'l'; // swap because mirror
+    const hand=H[side];
+    hand.active=true;
+
+    // Draw skeleton
+    if(window.drawConnectors&&window.HAND_CONNECTIONS){
+      const col=side==='l'?'rgba(0,230,118,0.5)':'rgba(0,176,255,0.5)';
+      drawConnectors(camCtx,lm,HAND_CONNECTIONS,{color:col,lineWidth:1});
+      drawLandmarks(camCtx,lm,{color:'rgba(255,255,255,0.6)',lineWidth:1,radius:2});
+    }
+
+    // Index tip, mirrored
+    const rx=1-lm[8].x, ry=lm[8].y;
+    smooth(hand,rx,ry);
+    hand.gesture=classify(lm);
+
+    // Update cursor element
+    const el=document.getElementById('hand-'+side);
+    const sc=toScreen(hand.sm.x,hand.sm.y);
+    el.style.left=sc.x+'px';el.style.top=sc.y+'px';
+    el.className='';
+    if(hand.gesture==='fist')  el.classList.add('palm');   // green
+    if(hand.gesture==='point') el.classList.add('point');  // amber
+  });
+
+  // Hide cursors for inactive hands
+  if(!H.l.active){document.getElementById('hand-l').style.left='-100px';}
+  if(!H.r.active){document.getElementById('hand-r').style.left='-100px';}
+
+  // Update legend highlights
+  const anyPalm=H.l.gesture==='palm'||H.r.gesture==='palm';
+  const anyPoint=H.l.gesture==='point'||H.r.gesture==='point';
+  const anyFist=H.l.gesture==='fist'||H.r.gesture==='fist';
+  document.getElementById('gl-palm').classList.toggle('active',anyPalm);
+  document.getElementById('gl-point').classList.toggle('active',anyPoint);
+  document.getElementById('gl-fist').classList.toggle('active',anyFist);
+  document.getElementById('gl-zoom').classList.toggle('active',H.l.active&&H.r.active);
+
+  // ═══ ACTIONS ═══
+  processActions();
+}
+
+function processActions(){
+  const now=Date.now();
+
+  // Active gesture from any detected hand (single hand mode)
+  const anyHand=H.l.active?H.l:(H.r.active?H.r:null);
+  if(!anyHand){ panRef=null; zoomRef=null; setFlash(null); cancelDwell(); return; }
+
+  const g=anyHand.gesture;
+  const sc=toScreen(anyHand.sm.x,anyHand.sm.y);
+
+  // Update legend highlights
+  document.getElementById('gl-palm').classList.toggle('active', g==='fist');
+  document.getElementById('gl-point').classList.toggle('active', g==='point');
+  document.getElementById('gl-fist').classList.toggle('active', false);
+  document.getElementById('gl-zoom').classList.toggle('active', g==='two');
+
+  // Update cursor style
+  const el=H.l.active?document.getElementById('hand-l'):document.getElementById('hand-r');
+  el.className='';
+  if(g==='fist')  el.classList.add('palm');   // green = panning
+  if(g==='point') el.classList.add('point');  // amber = pointer
+
+  // ── ✊ FIST = PAN ──
+  if(g==='fist'){
+    zoomRef=null; cancelDwell();
+    if(!panRef){
+      panRef={x:sc.x, y:sc.y, center:map.getCenter()};
+      showHUD('✊ Premik karte');
+    } else {
+      const dx=sc.x-panRef.x, dy=sc.y-panRef.y;
+      if(Math.abs(dx)>1||Math.abs(dy)>1){
+        // Pan relative to where fist started vs map center at that moment
+        const base=map.project(panRef.center);
+        map.panTo(map.unproject(base.subtract([dx,dy])),{animate:false,noMoveStart:true});
+        if(Math.abs(dx)>Math.abs(dy)) setFlash(dx>0?'right':'left');
+        else setFlash(dy>0?'down':'up');
+      }
+    }
+    return;
+  } else {
+    panRef=null;
+    setFlash(null);
+  }
+
+  // ── ✌ TWO FINGERS (idx+mid) = ZOOM via vertical movement ──
+  if(g==='two'){
+    cancelDwell();
+    // Track vertical position of wrist (landmark 0) for stability,
+    // but we smooth via hand.sm.y which is index tip – good enough
+    if(!zoomRef){
+      zoomRef={y:anyHand.sm.y, zoom:map.getZoom()};
+      showHUD('✌ Zoom – premakni roko gor/dol');
+    } else {
+      const dy=anyHand.sm.y - zoomRef.y; // positive = hand moved down
+      // dy > 0 → hand went down → zoom IN (closer)
+      // dy < 0 → hand went up  → zoom OUT (farther)
+      const newZoom=zoomRef.zoom + dy*8; // sensitivity factor
+      if(Math.abs(newZoom-map.getZoom())>0.08 && now-lastZoom>60){
+        lastZoom=now;
+        map.setZoom(newZoom,{animate:false});
+        const zoomIn=dy>0;
+        setFlash(zoomIn?'zin':'zout');
+        showHUD(zoomIn?'✌ Zoom In ▲':'✌ Zoom Out ▼');
+      }
+    }
+    return;
+  } else {
+    zoomRef=null;
+  }
+
+  // ── ☝ POINT = kurzor + dwell nad markerjem ──
+  if(g==='point'){
+    let nearest=null, nearD=Infinity;
+    for(const[id] of Object.entries(markers)){
+      const iv=interventions.find(i=>i.id==id); if(!iv) continue;
+      const pt=map.latLngToContainerPoint([iv.lat,iv.lng]);
+      const d=Math.hypot(sc.x-pt.x,sc.y-pt.y);
+      if(d<nearD){nearD=d;nearest=iv;}
+    }
+    if(nearest&&nearD<DWELL_R){
+      if(nearest.id!==dwellId){
+        cancelDwell();
+        dwellId=nearest.id; dwellStart=now;
+        startDwellAnim(sc.x,sc.y);
+      } else {
+        const elapsed=now-dwellStart;
+        updateDwellAnim(sc.x,sc.y,elapsed/DWELL_MS);
+        if(elapsed>=DWELL_MS&&!popupOpen){
+          showPopup(nearest,sc.x+20,sc.y-60);
+          showHUD('☝ Odprto: '+nearest.lok);
+          cancelDwell();
+        }
+      }
+    } else {
+      cancelDwell();
+      if(popupOpen&&nearD>DWELL_R*2) hidePopup();
+    }
+    return;
+  }
+
+  // Other / unrecognised gesture – cancel dwell
+  cancelDwell();
+}
+
+// ── Dwell ring animation ──
+const dc=document.getElementById('dwell-canvas');
+const dctx=dc.getContext('2d');
+function startDwellAnim(x,y){
+  dc.style.display='block';
+  dc.style.left=x+'px';dc.style.top=y+'px';
+}
+function updateDwellAnim(x,y,pct){
+  dc.style.left=x+'px';dc.style.top=y+'px';
+  dctx.clearRect(0,0,80,80);
+  // Background circle
+  dctx.beginPath();dctx.arc(40,40,26,0,Math.PI*2);
+  dctx.strokeStyle='rgba(0,176,255,0.2)';dctx.lineWidth=4;dctx.stroke();
+  // Progress arc
+  dctx.beginPath();
+  dctx.arc(40,40,26,-Math.PI/2,-Math.PI/2+pct*Math.PI*2);
+  dctx.strokeStyle=`rgba(255,171,0,${0.6+pct*0.4})`;dctx.lineWidth=4;dctx.stroke();
+  // Center dot
+  dctx.beginPath();dctx.arc(40,40,4,0,Math.PI*2);
+  dctx.fillStyle=pct>0.8?'rgba(255,171,0,0.9)':'rgba(0,176,255,0.7)';dctx.fill();
+}
+function cancelDwellAnim(){dc.style.display='none';dctx.clearRect(0,0,80,80);}
+function cancelDwell(){dwellId=null;clearTimeout(dwellTimer);cancelDwellAnim();}
+
+// ═══════════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════════
+window.addEventListener('load',initMap);
+document.addEventListener('keydown',e=>{
+  if(e.key==='Escape'){hidePopup();speechSynthesis.cancel();stopRec();W.step='idle';setStep(0);vuiBtn(false);vuiSt('Preklicano.');}
+});
+// Enter na tipkovnici ni več potreben – vnos je glasoven
+</script>
+</body>
+</html>
